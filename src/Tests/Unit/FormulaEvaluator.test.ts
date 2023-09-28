@@ -112,7 +112,7 @@ describe("FormulaEvaluator", () => {
           let result = recalc.result;
           let error = recalc.error;
 
-          expect(result).toEqual(3);
+          expect(result).toEqual(-1);
           expect(error).toEqual("");
         });
       });
@@ -128,7 +128,7 @@ describe("FormulaEvaluator", () => {
           let result = recalc.result;
           let error = recalc.error;
 
-          expect(result).toEqual(3);
+          expect(result).toEqual(2);
           expect(error).toEqual("");
         });
       });
@@ -321,6 +321,44 @@ describe("FormulaEvaluator", () => {
 
         expect(result).toEqual(1);
         expect(error).toEqual(ErrorMessages.invalidFormula);
+      });
+    });
+
+    describe("when the formula is 1 + 2 * (2 - 1) / 2 ", () => {
+      it("returns the number", () => {
+        const formula = ["1", "+", "2", "*", "(", "2", "-", "1", ")", "/", "2"];
+
+        recalc.evaluate(formula);
+
+        let result = recalc.result;
+        // let error = recalc.error;
+
+        expect(result).toEqual(2);
+        // expect(error).toEqual(ErrorMessages.invalidFormula);
+      });
+    });
+
+    describe("when the formula is 1 + 2 * (2 - 1 * 2) / 2 ", () => {
+      it("returns the number", () => {
+        const formula = ["1", "+", "2", "*", "(", "2", "-", "1", "*", "2", ")", "/", "2"];
+
+        recalc.evaluate(formula);
+
+        let result = recalc.result;
+
+        expect(result).toEqual(1);
+      });
+    });
+
+    describe("when the formula is 1 + 2 * ( (2 - 1) * 2) / 2 ", () => {
+      it("returns the number", () => {
+        const formula = ["1", "+", "2", "*", "(", "(", "2", "-", "1", ")", "*", "2", ")", "/", "2"];
+
+        recalc.evaluate(formula);
+
+        let result = recalc.result;
+
+        expect(result).toEqual(3);
       });
     });
 

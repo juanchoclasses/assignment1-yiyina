@@ -30,6 +30,10 @@ function SpreadSheet({ documentName }: SpreadSheetProps) {
   const [currentlyEditing, setCurrentlyEditing] = useState(spreadSheetClient.getEditStatus());
   const [userName, setUserName] = useState(window.sessionStorage.getItem('userName') || "");
 
+  // Pop up alert window with message
+  function showAlert(message: string) {
+    alert(message);
+  }
 
   function updateDisplayValues(): void {
     spreadSheetClient.userName = userName;
@@ -82,7 +86,11 @@ function SpreadSheet({ documentName }: SpreadSheetProps) {
    * the other buttons do require asynchronous processing and so the function is marked async
    */
   async function onCommandButtonClick(text: string): Promise<void> {
-
+    // Check if the user logged in or not
+    if (userName === "") {
+      showAlert("Please login to interact with the spreadsheet");
+      return;
+    }
 
     switch (text) {
       case ButtonNames.edit_toggle:
@@ -116,6 +124,11 @@ function SpreadSheet({ documentName }: SpreadSheetProps) {
    * 
    * */
   function onButtonClick(event: React.MouseEvent<HTMLButtonElement>): void {
+    // Check if the user logged in or not
+    if (userName === "") {
+      showAlert("Please login to interact with the spreadsheet");
+      return;
+    }
 
     const text = event.currentTarget.textContent;
     let trueText = text ? text : "";
@@ -136,6 +149,11 @@ function SpreadSheet({ documentName }: SpreadSheetProps) {
    * If the edit status is false then it will ask the machine to update the current formula.
    */
   function onCellClick(event: React.MouseEvent<HTMLButtonElement>): void {
+    // Check if the user logged in or not
+    if (userName === "") {
+      showAlert("Please login to interact with the spreadsheet");
+      return;
+    }
 
     const cellLabel = event.currentTarget.getAttribute("cell-label");
     // calculate the current row and column of the clicked on cell

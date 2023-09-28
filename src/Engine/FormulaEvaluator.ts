@@ -12,73 +12,196 @@ export class FormulaEvaluator {
   private _lastResult: number = 0;
   private _sheetMemory: SheetMemory;
   private _result: number = 0;
-
+  private _index: number = 0;
 
   constructor(memory: SheetMemory) {
     this._sheetMemory = memory;
   }
 
+  // evaluate(formula: FormulaType) {
+
+  //   // set the this._result to the length of the formula
+
+  //   this._result = formula.length;
+  //   this._errorMessage = "";
+
+  //   switch (formula.length) {
+  //     case 0:
+  //       this._errorMessage = ErrorMessages.emptyFormula;
+  //       break;
+  //     case 7:
+  //       this._errorMessage = ErrorMessages.partial;
+  //       break;
+  //     case 8:
+  //       this._errorMessage = ErrorMessages.divideByZero;
+  //       break;
+  //     case 9:
+  //       this._errorMessage = ErrorMessages.invalidCell;
+  //       break;
+  //     case 10:
+  //       this._errorMessage = ErrorMessages.invalidFormula;
+  //       break;
+  //     case 11:
+  //       this._errorMessage = ErrorMessages.invalidNumber;
+  //       break;
+  //     case 12:
+  //       this._errorMessage = ErrorMessages.invalidOperator;
+  //       break;
+  //     case 13:
+  //       this._errorMessage = ErrorMessages.missingParentheses;
+  //       break;
+  //     default:
+  //       this._errorMessage = "";
+  //       break;
+  //   }
+  // }
+
   /**
-    * place holder for the evaluator.   I am not sure what the type of the formula is yet 
-    * I do know that there will be a list of tokens so i will return the length of the array
-    * 
-    * I also need to test the error display in the front end so i will set the error message to
-    * the error messages found In GlobalDefinitions.ts
-    * 
-    * according to this formula.
-    * 
-    7 tokens partial: "#ERR",
-    8 tokens divideByZero: "#DIV/0!",
-    9 tokens invalidCell: "#REF!",
-  10 tokens invalidFormula: "#ERR",
-  11 tokens invalidNumber: "#ERR",
-  12 tokens invalidOperator: "#ERR",
-  13 missingParentheses: "#ERR",
-  0 tokens emptyFormula: "#EMPTY!",
-
-                    When i get back from my quest to save the world from the evil thing i will fix.
-                      (if you are in a hurry you can fix it yourself)
-                               Sincerely 
-                               Bilbo
-    * 
+   * Evaluate a mathematical formula and calculate the result.
+   *
+   * @param formula The mathematical formula to evaluate.
    */
-
-  evaluate(formula: FormulaType) {
-
-
-    // set the this._result to the length of the formula
-
-    this._result = formula.length;
+  evaluate(formula: FormulaType): void {
+    this._currentFormula = formula;
+    this._index = 0;
+    this._errorOccured = false;
     this._errorMessage = "";
+    this._result = 0;
 
-    switch (formula.length) {
-      case 0:
-        this._errorMessage = ErrorMessages.emptyFormula;
-        break;
-      case 7:
-        this._errorMessage = ErrorMessages.partial;
-        break;
-      case 8:
-        this._errorMessage = ErrorMessages.divideByZero;
-        break;
-      case 9:
-        this._errorMessage = ErrorMessages.invalidCell;
-        break;
-      case 10:
+    try {
+      // Evaluate the expression and calculate the result
+      this._result = this.expression();
+
+      // Check for any remaining tokens in the formula
+      if (this._index < this._currentFormula.length) {
         this._errorMessage = ErrorMessages.invalidFormula;
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        this._errorMessage = error.message;
+      } else {
+        // Handle the case where error is not an instance of Error, if needed
+        this._errorMessage = "An unknown error occurred";
+      }
+    }
+  }
+
+  /**
+   * Evaluate an arithmetic expression and return the result.
+   *
+   * @returns The value of the expression.
+   */
+  private expression(): number {
+    let value = this.term();
+    while (this._index < this._currentFormula.length && ['+', '-'].includes(this._currentFormula[this._index])) {
+      const op = this._currentFormula[this._index++];
+      if (this._index >= this._currentFormula.length) {
+        this._errorMessage = ErrorMessages.invalidFormula;
+        return value;
+      }
+      const rightValue = this.term();
+      value = op === '+' ? value + rightValue : value - rightValue;
+    }
+    return value;
+  }
+
+  /**
+   * Evaluate a term within the arithmetic expression and return the result.
+   *
+   * @returns The value of the term.
+   */
+  private term(): number {
+    let value = this.factor();
+    while (this._index < this._currentFormula.length && ['*', '/'].includes(this._currentFormula[this._index])) {
+      const op = this._currentFormula[this._index++];
+      if (this._index >= this._currentFormula.length) {
+        this._errorMessage = ErrorMessages.invalidFormula;
+        return value;
+      }
+      const rightValue = this.factor();
+      if (op === '/' && rightValue === 0) {
+        this._result = Infinity;
+        throw new Error(ErrorMessages.divideByZero);
+      }
+      value = op === '*' ? value * rightValue : value / rightValue;
+    }
+    return value;
+  }
+
+  /**
+   * Evaluate a factor within the arithmetic expression and return the result.
+   *
+   * @returns The value of the factor.
+   */
+  private factor(): number {
+    if (this._index >= this._currentFormula.length) {
+      throw new Error(ErrorMessages.invalidFormula);
+    }
+
+    // Check if the formula only has one unique number
+    this.validateUniqueNumber(this._currentFormula);
+
+    const token = this._currentFormula[this._index++];
+    if (this.isNumber(token)) {
+      return Number(token);
+    } else if (this.isCellReference(token)) {
+      const [value, error] = this.getCellValue(token);
+      if (error) {
+        throw new Error(error);
+      }
+      return value;
+    } else if (token === '(') {
+      const value = this.expression();
+      if (this._index >= this._currentFormula.length || this._currentFormula[this._index++] !== ')') {
+        throw new Error(ErrorMessages.missingParentheses);
+      }
+      return value;
+    } else {
+      throw new Error(ErrorMessages.invalidFormula);
+    }
+  }
+
+  /**
+   * Check if the formula only has one unique number or if it has open and closing parentheses with a number in between.
+   * If the formula contains one number and one or more operators, set the error message to "invalid formula".
+   *
+   * @param formula The mathematical formula to check.
+   */
+  private validateUniqueNumber(formula: FormulaType): void {
+    // If the formula only has 1 number, return that number
+    if (formula.length === 1 && this.isNumber(formula[0])) {
+      this._result = Number(formula[0]);
+      return;
+    }
+    // Find out the only number
+    let uniqueNumber: number | null = null;
+    let uniqueNumberIndex: number | null = null;
+    for (let i = 0; i < formula.length; i++) {
+      const token = formula[i];
+      if (this.isNumber(token)) {
+        if (uniqueNumber !== null) {
+          uniqueNumber = null;
+          break;
+        }
+        uniqueNumber = Number(token);
+        uniqueNumberIndex = i;
+      } else if (!["(", ")", "+", "-", "*", "/"].includes(token)) {
+        uniqueNumber = null;
         break;
-      case 11:
-        this._errorMessage = ErrorMessages.invalidNumber;
-        break;
-      case 12:
-        this._errorMessage = ErrorMessages.invalidOperator;
-        break;
-      case 13:
-        this._errorMessage = ErrorMessages.missingParentheses;
-        break;
-      default:
-        this._errorMessage = "";
-        break;
+      }
+    }
+
+    // if the formula is not null and the uniqueNumber is not sit at the first place and the uniqueNumber is not in the form of (number)
+    // set error message to invalid formula
+    if (
+      uniqueNumber !== null &&
+      uniqueNumberIndex !== null &&
+      (uniqueNumberIndex === 0 || formula[uniqueNumberIndex - 1] !== "(") &&
+      (uniqueNumberIndex === formula.length - 1 || formula[uniqueNumberIndex + 1] !== ")")
+    ) {
+      this._result = uniqueNumber;
+      this._errorMessage = ErrorMessages.invalidFormula;
+      return;
     }
   }
 
@@ -89,9 +212,6 @@ export class FormulaEvaluator {
   public get result(): number {
     return this._result;
   }
-
-
-
 
   /**
    * 
