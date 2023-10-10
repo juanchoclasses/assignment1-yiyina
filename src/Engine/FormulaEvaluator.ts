@@ -18,56 +18,25 @@ export class FormulaEvaluator {
     this._sheetMemory = memory;
   }
 
-  // evaluate(formula: FormulaType) {
-
-  //   // set the this._result to the length of the formula
-
-  //   this._result = formula.length;
-  //   this._errorMessage = "";
-
-  //   switch (formula.length) {
-  //     case 0:
-  //       this._errorMessage = ErrorMessages.emptyFormula;
-  //       break;
-  //     case 7:
-  //       this._errorMessage = ErrorMessages.partial;
-  //       break;
-  //     case 8:
-  //       this._errorMessage = ErrorMessages.divideByZero;
-  //       break;
-  //     case 9:
-  //       this._errorMessage = ErrorMessages.invalidCell;
-  //       break;
-  //     case 10:
-  //       this._errorMessage = ErrorMessages.invalidFormula;
-  //       break;
-  //     case 11:
-  //       this._errorMessage = ErrorMessages.invalidNumber;
-  //       break;
-  //     case 12:
-  //       this._errorMessage = ErrorMessages.invalidOperator;
-  //       break;
-  //     case 13:
-  //       this._errorMessage = ErrorMessages.missingParentheses;
-  //       break;
-  //     default:
-  //       this._errorMessage = "";
-  //       break;
-  //   }
-  // }
-
   /**
    * Evaluate a mathematical formula and calculate the result.
    *
    * @param formula The mathematical formula to evaluate.
    */
   evaluate(formula: FormulaType): void {
-    this._currentFormula = formula;
+    this._currentFormula = [...formula];
     this._index = 0;
     this._errorOccured = false;
     this._errorMessage = "";
     this._result = 0;
 
+    // if the formula is empty return ""
+    if (formula.length === 0) {
+      this._errorMessage = ErrorMessages.emptyFormula;
+      this._result = 0;
+      return;
+    }
+    
     try {
       // Evaluate the expression and calculate the result
       this._result = this.expression();
@@ -81,7 +50,7 @@ export class FormulaEvaluator {
         this._errorMessage = error.message;
       } else {
         // Handle the case where error is not an instance of Error, if needed
-        this._errorMessage = "An unknown error occurred";
+        this._errorMessage = ErrorMessages.invalidFormula;
       }
     }
   }
